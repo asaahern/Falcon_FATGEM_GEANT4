@@ -34,6 +34,9 @@
 #include "G4UserSteppingAction.hh"
 #include "globals.hh"
 #include "RunAction.hh"
+#include <fstream>
+#include <iostream>
+#include <sstream>
 
 class RunAction;
 
@@ -51,6 +54,8 @@ class SteppingAction : public G4UserSteppingAction
 
   private:
       RunAction* fRunAction;
+      std::ofstream myfile;
+
 
 };
 

@@ -51,14 +51,10 @@ PrimaryGeneratorAction::PrimaryGeneratorAction()
     G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
     G4ParticleDefinition* particle = particleTable->FindParticle("opticalphoton");
 
-    G4double wavelength = G4RandGauss::shoot(170.*nm, 6.*nm);//172 * nm;   // Xe scintillation
-    G4double energy = h_Planck * c_light / wavelength;
-
     // create particle gun
     G4int n_particle = 1;
     fParticleGun = new G4ParticleGun(n_particle);
     fParticleGun->SetParticleDefinition(particle);
-    fParticleGun->SetParticleEnergy(energy);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -77,22 +73,22 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
     // define initial position:
     G4double pitch  = 5.*mm;
     G4double fatgem_thickness= 4.6*mm;
-    G4double x0     = pitch/2;
+    G4double x0     = 0;
     G4double y0     = 0;
     G4double sigma  = 0.33*mm; //sigma = (0.15, 0.21, 0.28, 0.32, 0.33) for R = (0.5, 0.75, 1, 1.25, 1.5)
 
     // distribute photons in different holes, overwriting initial values of x0, y0
-    G4double n = G4UniformRand();
+    G4double n = 0;//G4UniformRand();
     if (n < 0.33){
-        x0  = pitch/2;
+        x0  = 0;
         y0  = 0;
     }
     else if(n<0.66){
-        x0  = -pitch/2;
+        x0  = -pitch;
         y0  = 0;  
     }
     else {
-        x0  = 0;
+        x0  = pitch/2;
         y0  = sqrt((pitch*pitch) - (pitch/2*pitch/2));  
     } 
    
@@ -100,6 +96,10 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
     G4double posY   = G4RandGauss::shoot(y0, sigma);  
     G4double posZ   = (G4UniformRand()-0.5)*fatgem_thickness;
     fParticleGun->SetParticlePosition(G4ThreeVector(posX, posY, posZ));
+
+    G4double wavelength = G4RandGauss::shoot(170.*nm, 6.*nm);//172 * nm;   // Xe scintillation
+    G4double energy = h_Planck * c_light / wavelength;
+    fParticleGun->SetParticleEnergy(energy);
 
     // define momentum direction: isotropic and random
     G4double theta  = std::acos(1-2* G4UniformRand())*rad;

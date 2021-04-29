@@ -28,6 +28,7 @@
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 #include "SteppingAction.hh"
+#include "G4SystemOfUnits.hh"
 
 #include "G4Step.hh"
 #include "G4Track.hh"
@@ -41,12 +42,25 @@
 #include "G4VPhysicalVolume.hh"
 #include "G4LogicalVolume.hh"
 #include "RunAction.hh"
+#include "CLHEP/Units/PhysicalConstants.h"
+
+
+#include <fstream>
+#include <iostream>
+#include <sstream>
+
+using namespace CLHEP;
+using namespace std;
+
+
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 SteppingAction::SteppingAction(RunAction* runAction)
 : G4UserSteppingAction(), fRunAction(runAction)
-{}
+{
+  myfile.open("out.txt", ios::out);
+}
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -60,6 +74,10 @@ void SteppingAction::UserSteppingAction(const G4Step* step)
 
     G4StepPoint* endPoint = step->GetPostStepPoint();
     if (endPoint->GetStepStatus() == fGeomBoundary) {
+	if (abs(endPoint->GetPosition().z()) > 5 ) {
+		myfile << endPoint->GetPosition().z() << " " << h_Planck*c_light/step->GetTrack()->GetKineticEnergy()/nm << G4endl;
+		step->GetTrack()->SetTrackStatus(fStopAndKill );
+	}
         const G4String touchableName =
             endPoint->GetTouchable()->GetVolume()->GetName();
         //G4cout << touchableName << G4endl;

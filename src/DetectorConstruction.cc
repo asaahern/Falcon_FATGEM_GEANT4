@@ -36,15 +36,22 @@
 #include "G4LogicalSkinSurface.hh"
 #include "G4OpticalSurface.hh"
 #include "G4Box.hh"
+#include "G4SubtractionSolid.hh"
 #include "G4LogicalVolume.hh"
 #include "G4ThreeVector.hh"
 #include "G4PVPlacement.hh"
 #include "G4SystemOfUnits.hh"
+#include "G4PhysicalConstants.hh"
+
 
 #include "G4NistManager.hh"
 #include "G4Tubs.hh"
 #include "G4VisAttributes.hh"
 #include "G4Colour.hh"
+#include <fstream>
+
+using namespace std;
+
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -56,7 +63,7 @@ DetectorConstruction::DetectorConstruction()
 	// FATGEM
 	fatgem_radius   = 20.*mm;
 	fatgem_thickness= 2.3*mm; // half thickness has to be given!!!
-	hole_radius		= 1.5*mm;
+	hole_radius		= 1.*mm;
 	hole_pitch		= 5.*mm;
 	hole_voff		= sqrt((hole_pitch*hole_pitch) - (hole_pitch/2*hole_pitch/2));
 
@@ -95,7 +102,6 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	// Option to switch on/off checking of volumes overlaps
 	G4bool checkOverlaps = true;
 	G4NistManager* nist = G4NistManager::Instance();
-
 	
 	// ------------ Generate & Add Material Properties Table ------------
 
@@ -211,6 +217,93 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	// Aluminum layer at source ---------------------------
 	G4Material* al_mat = nist->FindOrBuildMaterial("G4_Al");
 
+	//PEN poly(ethylene 2,6-naphthalate)
+	G4int ncomponents, z;
+	G4double a, density=1.36*g/cm3;
+	G4String name, symbol;
+	G4Element* H  = new G4Element(name="Hydrogen",  symbol="H" , z=1,  a=1.00794*g/mole );  
+	G4Element* C  = new G4Element(name="Carbon",    symbol="C",  z=6,  a=12.0107*g/mole );
+	G4Element* O  = new G4Element(name="Oxygen",    symbol="O",  z=8,  a=15.9994*g/mole );
+	G4Material* fPEN = new G4Material (name="PEN",density,ncomponents=3,kStateSolid);
+	fPEN->AddElement(C,14);
+	fPEN->AddElement(H,10);
+	fPEN->AddElement(O,4);
+	G4Material* fPENfoil = new  G4Material(name="PEN",density, fPEN);
+
+	G4MaterialPropertiesTable *myPEN = new G4MaterialPropertiesTable();
+	G4MaterialPropertiesTable *myPENfoil = new G4MaterialPropertiesTable();
+	const G4double hc = h_Planck*c_light/eV/nm;
+
+	G4double PEN_ENE[1000], PEN_EMISSION_VAL[1000], PEN_ABSORPTION_VAL[1000];
+	G4int dim = 0 ;
+	G4double myene, myene2, myvalue, PENNorma = 0 ;
+	ifstream fpen_emission("pen_emission_spectrum.dat");
+	if ( !fpen_emission.is_open())
+        	cerr << "ERROR: Could not open PEN emission file" <<endl;
+	while(!fpen_emission.eof()) {
+		fpen_emission >> myene >> myvalue ;
+		if(fpen_emission.eof()) break;
+		PEN_ENE[dim] = myene*eV;
+		if(hc/ (PEN_ENE[dim]/nm) > 600) {
+			PEN_EMISSION_VAL[dim] = 0 ;
+          	} else  {
+			PEN_EMISSION_VAL[dim] = myvalue;
+			PENNorma += myvalue ;
+		}
+		dim++;
+	}
+	fpen_emission.close();
+	myPEN->AddProperty("WLSCOMPONENT",PEN_ENE,  PEN_EMISSION_VAL,       dim);
+	myPENfoil->AddProperty("WLSCOMPONENT",PEN_ENE,  PEN_EMISSION_VAL,       dim);
+
+	G4double PEN_ENE2[1000], PEN_WLS_ABSORPTION_VAL[1000], PEN_RINDEX[1000], PEN_RAYL[1000], PEN_RAYL_FOIL[1000];
+	dim = 0 ;
+	ifstream fpen_absorption("pen_absorption_length.dat");
+	if ( !fpen_absorption.is_open())
+		cerr << "ERROR: Could not open PEN absorption file" <<endl;
+
+	while(!fpen_absorption.eof()) {
+          fpen_absorption >> myene2 >> myvalue ;
+          if(fpen_absorption.eof()) break;
+          PEN_ENE2[dim] = myene2*eV;
+	  // PEN_WLS_ABSORPTION_VAL[dim] = myvalue;
+          if (myene2 > 1240./250.)  { // transition point at 250 nm
+                // in VUV normal absorption and scattering disabled (WLS absorption will dominate)
+		  PEN_WLS_ABSORPTION_VAL[dim] = 100*nm;
+                  PEN_ABSORPTION_VAL[dim]  = 1000.*m;
+                  PEN_RINDEX[dim]          = 1.75;
+                  PEN_RAYL[dim]            = 1000.*m;
+		  PEN_RAYL_FOIL[dim]       = 1000.*m;
+          }
+          else {
+                // in visible absorption and scattering meaningful
+		  PEN_WLS_ABSORPTION_VAL[dim] = 1000*m;
+                  PEN_ABSORPTION_VAL[dim]  = 1.*cm; // Efremenko et al.
+                  PEN_RINDEX[dim]          = 1.75;
+                  PEN_RAYL[dim]            = 10*cm; // educated guess
+		  PEN_RAYL_FOIL[dim]       = 150.*micrometer; // educated guess
+          }
+          dim++;
+	}
+	fpen_absorption.close();
+
+	myPEN->AddProperty("WLSABSLENGTH",PEN_ENE2, PEN_WLS_ABSORPTION_VAL, dim);
+	myPEN->AddProperty("ABSLENGTH",   PEN_ENE2, PEN_ABSORPTION_VAL,     dim);
+	myPEN->AddProperty("RINDEX",      PEN_ENE2, PEN_RINDEX,             dim);
+	myPEN->AddProperty("RAYLEIGH",    PEN_ENE2, PEN_RAYL,               dim);
+	myPEN->AddConstProperty("WLSMEANNUMBERPHOTONS", 0.091);
+	myPEN->AddConstProperty("WLSTIMECONSTANT",20.*ns);
+	myPEN->AddConstProperty("WLSEFFICIENCY",0.091); // https://arxiv.org/abs/2103.03232
+	fPEN->SetMaterialPropertiesTable(myPEN);
+
+	myPENfoil->AddProperty("WLSABSLENGTH",PEN_ENE2, PEN_WLS_ABSORPTION_VAL, dim);
+	myPENfoil->AddProperty("ABSLENGTH",   PEN_ENE2, PEN_ABSORPTION_VAL,     dim);
+	myPENfoil->AddProperty("RINDEX",      PEN_ENE2, PEN_RINDEX,             dim);
+	myPENfoil->AddProperty("RAYLEIGH",    PEN_ENE2, PEN_RAYL_FOIL,          dim);
+	myPENfoil->AddConstProperty("WLSMEANNUMBERPHOTONS", 1.);
+	myPENfoil->AddConstProperty("WLSTIMECONSTANT",20.*ns);
+	myPENfoil->AddConstProperty("WLSEFFICIENCY",0.34); // https://arxiv.org/abs/2103.03232
+	fPENfoil->SetMaterialPropertiesTable(myPENfoil);
 
   // ----------- colors ------------
 
@@ -277,187 +370,70 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	// FATGEM
 	// volume
 	G4Tubs* fatgem = new G4Tubs("fatgem", 0.*cm, fatgem_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* fatgem_log = new G4LogicalVolume(fatgem, PMMA_mat, "fatgem", 0, 0, 0);
+	//G4LogicalVolume* fatgem_log = new G4LogicalVolume(fatgem, PMMA_mat, "fatgem", 0, 0, 0);
+	G4LogicalVolume* fatgem_log = new G4LogicalVolume(fatgem, fPEN, "fatgem", 0, 0, 0);
 	G4VPhysicalVolume* fatgem_phys = new G4PVPlacement(0, G4ThreeVector(), fatgem_log, "fatgem", expHall_log, false, 0, checkOverlaps);
 	fatgem_log -> SetVisAttributes(red);
 
-	// optical surface
-	G4OpticalSurface* OS_fatgem = new G4OpticalSurface("fatgem_surface");
-	G4LogicalSkinSurface* SS_fatgem = new G4LogicalSkinSurface("fatgem_surface", fatgem_log, OS_fatgem);
+	G4Tubs* hole = new G4Tubs("hole", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
+	G4LogicalVolume* hole_log = new G4LogicalVolume(hole, matXe, "hole", 0, 0, 0);
 
-	OS_fatgem->SetType(dielectric_metal);
-	OS_fatgem->SetFinish(ground);
-	OS_fatgem->SetModel(glisur);
-	OS_fatgem->SetPolish(0.4);
+	G4double hole_x[31]={0,-hole_pitch,hole_pitch,-hole_pitch*2,hole_pitch*2,
+			     hole_pitch/2.,-hole_pitch/2.,hole_pitch*1.5,-hole_pitch*1.5,hole_pitch*2.5,-hole_pitch*2.5,
+			     hole_pitch/2.,-hole_pitch/2.,hole_pitch*1.5,-hole_pitch*1.5,hole_pitch*2.5,-hole_pitch*2.5,
+			     0,-hole_pitch,hole_pitch,-hole_pitch*2,hole_pitch*2,
+			     0,-hole_pitch,hole_pitch,-hole_pitch*2,hole_pitch*2,
+			     hole_pitch/2.,-hole_pitch/2.,
+			     hole_pitch/2.,-hole_pitch/2.};
+	G4double hole_y[31]= {0,0,0,0,0,
+			      -hole_voff,-hole_voff,-hole_voff,-hole_voff,-hole_voff,-hole_voff,
+			      hole_voff,hole_voff,hole_voff,hole_voff,hole_voff,hole_voff,
+			      -2*hole_voff,-2*hole_voff,-2*hole_voff,-2*hole_voff,-2*hole_voff,
+			      2*hole_voff,2*hole_voff,2*hole_voff,2*hole_voff,2*hole_voff,
+			       -3*hole_voff,-3*hole_voff,
+			      3*hole_voff,3*hole_voff};
+
+	G4VPhysicalVolume* hole_phys[31];
+	for(int i=0; i<31; i++)
+	  hole_phys[i] = new G4PVPlacement(0, G4ThreeVector(hole_x[i], hole_y[i], 0), hole_log, "hole", fatgem_log, false, i, checkOverlaps);
+	
+	// optical surface 
+	G4OpticalSurface* OS_fatgem_hole = new G4OpticalSurface("fatgem_hole_surface");
+
+	for(int i=0; i<31; i++) {
+		new G4LogicalBorderSurface("fatgem_hole_surface", fatgem_phys, hole_phys[i], OS_fatgem_hole);
+		new G4LogicalBorderSurface("fatgem_hole_surface", hole_phys[i], fatgem_phys, OS_fatgem_hole);
+	}
+
+	OS_fatgem_hole->SetType(dielectric_dielectric);
+	OS_fatgem_hole->SetFinish(ground);
+	OS_fatgem_hole->SetModel(glisur);
+	OS_fatgem_hole->SetPolish(0.1);
 
 	const G4int num = 11;
 	G4double ephoton_fatgem[num] = { 0.12*eV, 0.31*eV, 0.62*eV, 1.24*eV, 1.77*eV, 2.067*eV, 2.48*eV, 3.1*eV, 4.13*eV, 6.2*eV,  8.9*eV };
-	G4double reflectivity_fatgem[num] = { 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. };
-
+	G4double reflectivity_fatgem[num] = { 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1. };
 	G4MaterialPropertiesTable* R_fatgem = new G4MaterialPropertiesTable();
 	R_fatgem->AddProperty("REFLECTIVITY", ephoton_fatgem, reflectivity_fatgem, num);
-	OS_fatgem->SetMaterialPropertiesTable(R_fatgem);
+	OS_fatgem_hole->SetMaterialPropertiesTable(R_fatgem);
 
+	G4OpticalSurface* OS_clevios = new G4OpticalSurface("clevios_surface");
+	new G4LogicalBorderSurface("clevios_surface", fatgem_phys, expHall_phys, OS_clevios);
+	new G4LogicalBorderSurface("clevios_surface", expHall_phys, fatgem_phys, OS_clevios);
 
-	// holes
-	//line 0
-	G4Tubs* Hole1 = new G4Tubs("hole1", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole1_log = new G4LogicalVolume(Hole1, matXe, "hole1", 0, 0, 0);
-	G4VPhysicalVolume* Hole1_phys = new G4PVPlacement(0, G4ThreeVector(-hole_pitch/2, 0, 0), Hole1_log, "hole1", fatgem_log, false, 0, checkOverlaps);
-	
-	G4Tubs* Hole2 = new G4Tubs("hole2", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole2_log = new G4LogicalVolume(Hole2, matXe, "hole2", 0, 0, 0);
-	G4VPhysicalVolume* Hole2_phys = new G4PVPlacement(0, G4ThreeVector(hole_pitch/2, 0, 0), Hole2_log, "hole2", fatgem_log, false, 0, checkOverlaps);
+	OS_clevios->SetType(dielectric_dielectric);
+        OS_clevios->SetFinish(polished);
+        OS_clevios->SetModel(glisur);
+        OS_clevios->SetPolish(1.);
 
-	G4Tubs* Hole3 = new G4Tubs("hole3", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole3_log = new G4LogicalVolume(Hole3, matXe, "hole3", 0, 0, 0);
-	G4VPhysicalVolume* Hole3_phys = new G4PVPlacement(0, G4ThreeVector(-hole_pitch*3/2, 0, 0), Hole3_log, "hole3", fatgem_log, false, 0, checkOverlaps);
-	
-	G4Tubs* Hole4 = new G4Tubs("hole4", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole4_log = new G4LogicalVolume(Hole4, matXe, "hole4", 0, 0, 0);
-	G4VPhysicalVolume* Hole4_phys = new G4PVPlacement(0, G4ThreeVector(hole_pitch*3/2, 0, 0), Hole4_log, "hole4", fatgem_log, false, 0, checkOverlaps);
+	//const G4int num = 11;
+        G4double ephoton_clevios[num] = { 0.12*eV, 0.31*eV, 0.62*eV, 1.24*eV, 1.77*eV, 2.067*eV, 2.48*eV, 3.1*eV, 4.13*eV, 6.2*eV,  8.9*eV };
+	// 1% loss in VIS, 20% loss in VUV
+        G4double reflectivity_clevios[num] = { 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.8, 0.8 };
+	G4MaterialPropertiesTable* R_clevios = new G4MaterialPropertiesTable();
+	R_clevios->AddProperty("REFLECTIVITY", ephoton_clevios, reflectivity_clevios, num);
+	OS_clevios->SetMaterialPropertiesTable(R_clevios);
 
-	G4Tubs* Hole5 = new G4Tubs("hole5", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole5_log = new G4LogicalVolume(Hole5, matXe, "hole1", 0, 0, 0);
-	G4VPhysicalVolume* Hole5_phys = new G4PVPlacement(0, G4ThreeVector(-hole_pitch*5/2, 0, 0), Hole5_log, "hole5", fatgem_log, false, 0, checkOverlaps);
-	
-	G4Tubs* Hole6 = new G4Tubs("hole6", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole6_log = new G4LogicalVolume(Hole6, matXe, "hole6", 0, 0, 0);
-	G4VPhysicalVolume* Hole6_phys = new G4PVPlacement(0, G4ThreeVector(hole_pitch*5/2, 0, 0), Hole6_log, "hole6", fatgem_log, false, 0, checkOverlaps);
-
-	//line -1
-	G4Tubs* Hole7 = new G4Tubs("hole7", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole7_log = new G4LogicalVolume(Hole7, matXe, "hole7", 0, 0, 0);
-	G4VPhysicalVolume* Hole7_phys = new G4PVPlacement(0, G4ThreeVector(0, -hole_voff, 0), Hole7_log, "hole7", fatgem_log, false, 0, checkOverlaps);
-	
-	G4Tubs* Hole8 = new G4Tubs("hole8", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole8_log = new G4LogicalVolume(Hole8, matXe, "hole8", 0, 0, 0);
-	G4VPhysicalVolume* Hole8_phys = new G4PVPlacement(0, G4ThreeVector(-hole_pitch, -hole_voff, 0), Hole8_log, "hole8", fatgem_log, false, 0, checkOverlaps);
-
-	G4Tubs* Hole9 = new G4Tubs("hole9", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole9_log = new G4LogicalVolume(Hole9, matXe, "hole9", 0, 0, 0);
-	G4VPhysicalVolume* Hole9_phys = new G4PVPlacement(0, G4ThreeVector(hole_pitch, -hole_voff, 0), Hole9_log, "hole9", fatgem_log, false, 0, checkOverlaps);
-	
-	G4Tubs* Hole10 = new G4Tubs("hole10", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole10_log = new G4LogicalVolume(Hole10, matXe, "hole10", 0, 0, 0);
-	G4VPhysicalVolume* Hole10_phys = new G4PVPlacement(0, G4ThreeVector(-hole_pitch*2, -hole_voff, 0), Hole10_log, "hole10", fatgem_log, false, 0, checkOverlaps);
-
-	G4Tubs* Hole11 = new G4Tubs("hole11", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole11_log = new G4LogicalVolume(Hole11, matXe, "hole11", 0, 0, 0);
-	G4VPhysicalVolume* Hole11_phys = new G4PVPlacement(0, G4ThreeVector(hole_pitch*2, -hole_voff, 0), Hole11_log, "hole11", fatgem_log, false, 0, checkOverlaps);
-	
-	//line +1
-	G4Tubs* Hole12 = new G4Tubs("hole12", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole12_log = new G4LogicalVolume(Hole12, matXe, "hole12", 0, 0, 0);
-	G4VPhysicalVolume* Hole12_phys = new G4PVPlacement(0, G4ThreeVector(0, hole_voff, 0), Hole12_log, "hole12", fatgem_log, false, 0, checkOverlaps);
-	
-	G4Tubs* Hole13 = new G4Tubs("hole13", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole13_log = new G4LogicalVolume(Hole13, matXe, "hole13", 0, 0, 0);
-	G4VPhysicalVolume* Hole13_phys = new G4PVPlacement(0, G4ThreeVector(-hole_pitch, hole_voff, 0), Hole13_log, "hole13", fatgem_log, false, 0, checkOverlaps);
-
-	G4Tubs* Hole14 = new G4Tubs("hole14", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole14_log = new G4LogicalVolume(Hole14, matXe, "hole14", 0, 0, 0);
-	G4VPhysicalVolume* Hole14_phys = new G4PVPlacement(0, G4ThreeVector(hole_pitch, hole_voff, 0), Hole14_log, "hole14", fatgem_log, false, 0, checkOverlaps);
-	
-	G4Tubs* Hole15 = new G4Tubs("hole15", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole15_log = new G4LogicalVolume(Hole15, matXe, "hole15", 0, 0, 0);
-	G4VPhysicalVolume* Hole15_phys = new G4PVPlacement(0, G4ThreeVector(-hole_pitch*2, hole_voff, 0), Hole15_log, "hole10", fatgem_log, false, 0, checkOverlaps);
-
-	G4Tubs* Hole16 = new G4Tubs("hole16", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole16_log = new G4LogicalVolume(Hole16, matXe, "hole16", 0, 0, 0);
-	G4VPhysicalVolume* Hole16_phys = new G4PVPlacement(0, G4ThreeVector(hole_pitch*2, hole_voff, 0), Hole16_log, "hole16", fatgem_log, false, 0, checkOverlaps);
-
-	//line-2
-	G4Tubs* Hole17 = new G4Tubs("hole17", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole17_log = new G4LogicalVolume(Hole17, matXe, "hole17", 0, 0, 0);
-	G4VPhysicalVolume* Hole17_phys = new G4PVPlacement(0, G4ThreeVector(-hole_pitch/2, -hole_voff*2, 0), Hole17_log, "hole17", fatgem_log, false, 0, checkOverlaps);
-	
-	G4Tubs* Hole18 = new G4Tubs("hole18", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole18_log = new G4LogicalVolume(Hole18, matXe, "hole18", 0, 0, 0);
-	G4VPhysicalVolume* Hole18_phys = new G4PVPlacement(0, G4ThreeVector(hole_pitch/2, -hole_voff*2, 0), Hole18_log, "hole18", fatgem_log, false, 0, checkOverlaps);
-
-	G4Tubs* Hole19 = new G4Tubs("hole19", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole19_log = new G4LogicalVolume(Hole19, matXe, "hole19", 0, 0, 0);
-	G4VPhysicalVolume* Hole19_phys = new G4PVPlacement(0, G4ThreeVector(-hole_pitch*3/2, -hole_voff*2, 0), Hole19_log, "hole19", fatgem_log, false, 0, checkOverlaps);
-	
-	G4Tubs* Hole20 = new G4Tubs("hole20", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole20_log = new G4LogicalVolume(Hole20, matXe, "hole20", 0, 0, 0);
-	G4VPhysicalVolume* Hole20_phys = new G4PVPlacement(0, G4ThreeVector(hole_pitch*3/2, -hole_voff*2, 0), Hole20_log, "hole20", fatgem_log, false, 0, checkOverlaps);
-
-	//line+2
-	G4Tubs* Hole21 = new G4Tubs("hole21", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole21_log = new G4LogicalVolume(Hole21, matXe, "hole21", 0, 0, 0);
-	G4VPhysicalVolume* Hole21_phys = new G4PVPlacement(0, G4ThreeVector(-hole_pitch/2, hole_voff*2, 0), Hole21_log, "hole21", fatgem_log, false, 0, checkOverlaps);
-	
-	G4Tubs* Hole22 = new G4Tubs("hole22", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole22_log = new G4LogicalVolume(Hole22, matXe, "hole22", 0, 0, 0);
-	G4VPhysicalVolume* Hole22_phys = new G4PVPlacement(0, G4ThreeVector(hole_pitch/2, hole_voff*2, 0), Hole22_log, "hole22", fatgem_log, false, 0, checkOverlaps);
-
-	G4Tubs* Hole23 = new G4Tubs("hole23", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole23_log = new G4LogicalVolume(Hole23, matXe, "hole23", 0, 0, 0);
-	G4VPhysicalVolume* Hole23_phys = new G4PVPlacement(0, G4ThreeVector(-hole_pitch*3/2, hole_voff*2, 0), Hole23_log, "hole23", fatgem_log, false, 0, checkOverlaps);
-	
-	G4Tubs* Hole24 = new G4Tubs("hole24", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole24_log = new G4LogicalVolume(Hole24, matXe, "hole24", 0, 0, 0);
-	G4VPhysicalVolume* Hole24_phys = new G4PVPlacement(0, G4ThreeVector(hole_pitch*3/2, hole_voff*2, 0), Hole24_log, "hole24", fatgem_log, false, 0, checkOverlaps);
-
-	//line -3
-	G4Tubs* Hole25 = new G4Tubs("hole25", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole25_log = new G4LogicalVolume(Hole25, matXe, "hole25", 0, 0, 0);
-	G4VPhysicalVolume* Hole25_phys = new G4PVPlacement(0, G4ThreeVector(0, -hole_voff*3, 0), Hole25_log, "hole25", fatgem_log, false, 0, checkOverlaps);
-	
-	G4Tubs* Hole26 = new G4Tubs("hole26", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole26_log = new G4LogicalVolume(Hole26, matXe, "hole26", 0, 0, 0);
-	G4VPhysicalVolume* Hole26_phys = new G4PVPlacement(0, G4ThreeVector(-hole_pitch, -hole_voff*3, 0), Hole26_log, "hole26", fatgem_log, false, 0, checkOverlaps);
-
-	G4Tubs* Hole27 = new G4Tubs("hole27", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole27_log = new G4LogicalVolume(Hole27, matXe, "hole27", 0, 0, 0);
-	G4VPhysicalVolume* Hole27_phys = new G4PVPlacement(0, G4ThreeVector(hole_pitch, -hole_voff*3, 0), Hole27_log, "hole27", fatgem_log, false, 0, checkOverlaps);
-	
-	//line +3
-	G4Tubs* Hole28 = new G4Tubs("hole28", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole28_log = new G4LogicalVolume(Hole28, matXe, "hole28", 0, 0, 0);
-	G4VPhysicalVolume* Hole28_phys = new G4PVPlacement(0, G4ThreeVector(0, hole_voff*3, 0), Hole28_log, "hole28", fatgem_log, false, 0, checkOverlaps);
-	
-	G4Tubs* Hole29 = new G4Tubs("hole29", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole29_log = new G4LogicalVolume(Hole29, matXe, "hole29", 0, 0, 0);
-	G4VPhysicalVolume* Hole29_phys = new G4PVPlacement(0, G4ThreeVector(-hole_pitch, hole_voff*3, 0), Hole29_log, "hole29", fatgem_log, false, 0, checkOverlaps);
-
-	G4Tubs* Hole30 = new G4Tubs("hole30", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	G4LogicalVolume* Hole30_log = new G4LogicalVolume(Hole30, matXe, "hole30", 0, 0, 0);
-	G4VPhysicalVolume* Hole30_phys = new G4PVPlacement(0, G4ThreeVector(hole_pitch, hole_voff*3, 0), Hole30_log, "hole30", fatgem_log, false, 0, checkOverlaps);
-	
-	Hole1_log -> SetVisAttributes(white);
-	Hole2_log -> SetVisAttributes(white);
-	Hole3_log -> SetVisAttributes(white);
-	Hole4_log -> SetVisAttributes(white);
-	Hole5_log -> SetVisAttributes(white);
-	Hole6_log -> SetVisAttributes(white);
-	Hole7_log -> SetVisAttributes(white);
-	Hole8_log -> SetVisAttributes(white);
-	Hole9_log -> SetVisAttributes(white);
-	Hole10_log -> SetVisAttributes(white);
-	Hole11_log -> SetVisAttributes(white);
-	Hole12_log -> SetVisAttributes(white);
-	Hole13_log -> SetVisAttributes(white);
-	Hole14_log -> SetVisAttributes(white);
-	Hole15_log -> SetVisAttributes(white);
-	Hole16_log -> SetVisAttributes(white);
-	Hole17_log -> SetVisAttributes(white);
-	Hole18_log -> SetVisAttributes(white);
-	Hole19_log -> SetVisAttributes(white);
-	Hole20_log -> SetVisAttributes(white);
-	Hole21_log -> SetVisAttributes(white);
-	Hole22_log -> SetVisAttributes(white);
-	Hole23_log -> SetVisAttributes(white);
-	Hole24_log -> SetVisAttributes(white);
-	Hole25_log -> SetVisAttributes(white);
-	Hole26_log -> SetVisAttributes(white);
-	Hole27_log -> SetVisAttributes(white);
-	Hole28_log -> SetVisAttributes(white);
-	Hole29_log -> SetVisAttributes(white);
-	Hole30_log -> SetVisAttributes(white);
-	
 	// FATGEM base
 	if (!disable_FATGEM_base) {
 
@@ -510,9 +486,9 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 
 	// PMT Quartz Window
 	G4OpticalSurface* opPMT_window = new G4OpticalSurface("PMT_Surface");
-	opPMT_window->SetType(dielectric_LUTDAVIS);
-	opPMT_window->SetFinish(Polished_LUT);
-	opPMT_window->SetModel(DAVIS);
+	opPMT_window->SetType(dielectric_LUT);
+	opPMT_window->SetFinish(polishedair);
+	opPMT_window->SetModel(LUT);
 
 	G4LogicalBorderSurface* PMT_Surface = new G4LogicalBorderSurface("PMT_BorderSurface1", pmtWindow_phys, expHall_phys, opPMT_window);
 	G4OpticalSurface* PMTopticalSurface = dynamic_cast <G4OpticalSurface*>
