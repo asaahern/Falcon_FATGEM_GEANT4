@@ -75,7 +75,21 @@ void SteppingAction::UserSteppingAction(const G4Step* step)
     G4StepPoint* endPoint = step->GetPostStepPoint();
     if (endPoint->GetStepStatus() == fGeomBoundary) {
 	if (abs(endPoint->GetPosition().z()) > 5 ) {
-		myfile << endPoint->GetPosition().z() << " " << h_Planck*c_light/step->GetTrack()->GetKineticEnergy()/nm << G4endl;
+		if (G4RunManager::GetRunManager()->GetCurrentEvent()->GetEventID()>1000000) 
+			myfile << "S1 ";
+		else
+			myfile << "S2 ";
+
+		if(endPoint->GetPosition().z()>5)
+			myfile << "TPC ";
+		else
+			myfile << "PMT ";
+	
+		if (h_Planck*c_light/step->GetTrack()->GetKineticEnergy()/nm>250)
+			myfile << "VIS" << G4endl;
+		else
+			myfile << "VUV" << G4endl;
+
 		step->GetTrack()->SetTrackStatus(fStopAndKill );
 	}
         const G4String touchableName =

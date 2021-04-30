@@ -51,6 +51,7 @@ class PrimaryGeneratorAction : public G4VUserPrimaryGeneratorAction
 
   private:
     G4ParticleGun* fParticleGun;
+    int fCounter;
 
 };
 

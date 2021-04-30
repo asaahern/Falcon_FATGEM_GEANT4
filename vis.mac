@@ -11,7 +11,7 @@
 /run/initialize
 #
 # Use this open statement to create an OpenGL view:
-/vis/open OGL 600x600-0+0
+#/vis/open OGL 600x600-0+0
 #
 # Use this open statement to create a .prim file suitable for
 # viewing in DAWN:
@@ -80,15 +80,18 @@
 #
 # To superimpose all of the events from a given run:
 /vis/scene/endOfEventAction accumulate
+/vis/scene/endOfRunAction accumulate
 #
 # Re-establish auto refreshing and verbosity:
 /vis/viewer/set/autoRefresh true
 /vis/verbose warnings
 /control/verbose 2
-#/tracking/verbose 2
+#/tracking/verbose 1
 #
 #/run/initialize
-/run/beamOn 1000
+/run/beamOn 2000000
+#/run/beamOn 1000
+exit
 
 #/tracking/verbose 0
 #/run/verbose 0

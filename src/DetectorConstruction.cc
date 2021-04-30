@@ -200,6 +200,81 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	// Plexiglass (for FATGEM and source) ----------------
 	G4Material* PMMA_mat = nist->FindOrBuildMaterial("G4_PLEXIGLASS");
 
+  G4MaterialPropertiesTable *myAcrylic = new G4MaterialPropertiesTable();
+  G4double myAcrEnergy[18],  myAcrRI[18];
+
+  const int myAcrSize = 504;
+  G4double myAcrAbsEnergy[myAcrSize] = {
+    60,200,280,281,282,283,284,285,286,287,288,289,290,291,292,293,294,295,296,297,298,299,300,301,302,
+    303,304,305,306,307,308,309,310,311,312,313,314,315,316,317,318,319,320,321,322,323,324,325,326,327,328,329,330,
+    331,332,333,334,335,336,337,338,339,340,341,342,343,344,345,346,347,348,349,350,351,352,353,354,355,356,357,358,
+    359,360,361,362,363,364,365,366,367,368,369,370,371,372,373,374,375,376,377,378,379,380,381,382,383,384,385,386,387,
+    388,389,390,391,392,393,394,395,396,397,398,399,400,401,402,403,404,405,406,407,408,409,410,411,412,413,414,415,
+    416,417,418,419,420,421,422,423,424,425,426,427,428,429,430,431,432,433,434,435,436,437,438,439,440,441,442,443,
+    444,445,446,447,448,449,450,451,452,453,454,455,456,457,458,459,460,461,462,463,464,465,466,467,468,469,470,471,
+    472,473,474,475,476,477,478,479,480,481,482,483,484,485,486,487,488,489,490,491,492,493,494,495,496,497,498,499,
+    500,501,502,503,504,505,506,507,508,509,510,511,512,513,514,515,516,517,518,519,520,521,522,523,524,525,526,527,528,
+    529,530,531,532,533,534,535,536,537,538,539,540,541,542,543,544,545,546,547,548,549,550,551,552,553,554,555,556,
+    557,558,559,560,561,562,563,564,565,566,567,568,569,570,571,572,573,574,575,576,577,578,579,580,581,582,583,584,
+    585,586,587,588,589,590,591,592,593,594,595,596,597,598,599,600,601,602,603,604,605,606,607,608,609,610,611,612,
+    613,614,615,616,617,618,619,620,621,622,623,624,625,626,627,628,629,630,631,632,633,634,635,636,637,638,639,640,
+    641,642,643,644,645,646,647,648,649,650,651,652,653,654,655,656,657,658,659,660,661,662,663,664,665,666,667,668,669,
+    670,671,672,673,674,675,676,677,678,679,680,681,682,683,684,685,686,687,688,689,690,691,692,693,694,695,696,697,
+    698,699,700,701,702,703,704,705,706,707,708,709,710,711,712,713,714,715,716,717,718,719,720,721,722,723,724,725,
+    726,727,728,729,730,731,732,733,734,735,736,737,738,739,740,741,742,743,744,745,746,747,748,749,750,751,752,753,
+    754,755,756,757,758,759,760,761,762,763,764,765,766,767,768,769,770,771,772,773,774,775,776,777,778,779,780,800
+  };
+  G4double myAcrAbs[myAcrSize] = {
+    0,0,1.32284,1.29312,1.30753,1.30943,1.26653,1.32372,1.29873,1.3092,1.30371,1.30577,1.32406,1.31243,1.3171,1.28569,
+    1.30494,1.33508,1.30388,1.29962,1.29142,1.30584,1.28672,1.31488,1.30954,1.31865,1.29685,1.28557,1.3144,1.32283,1.31425,
+    1.27107,1.302,1.29515,1.29604,1.31832,1.27713,1.33705,1.31362,1.34722,1.34076,1.33069,1.35506,1.35238,1.33769,1.33566,1.35435,
+    1.32866,1.35414,1.34693,1.40201,1.3828,1.39343,1.31766,1.30547,1.34563,1.31455,1.34873,1.32728,1.281,1.35277,1.31982,1.30124,
+    1.28945,1.29276,1.2827,1.28362,1.29432,1.25258,1.21353,1.27814,1.26223,1.22418,1.23389,1.19746,1.20099,1.23181,1.2066,1.21319,
+    1.21229,1.22824,1.2102,1.20421,1.17812,1.19581,1.23024,1.15775,1.21839,1.20776,1.21069,1.1799,1.20016,1.1395,1.19189,1.16832,
+    1.13224,1.24984,1.50017,1.77389,1.78046,2.09596,1.93195,2.85164,3.44997,2.62686,4.97381,5.97033,14.0861,18.7694,22.3729,23.5664,
+    24.2125,24.918,27.6302,32.0202,38.1495,45.9201,55.8979,68.4572,83.8411,102.648,125.635,153.884,187.777,229.237,278.717,339.222,
+    410.576,495.219,597.237,707.002,839.051,980.058,1143.41,1321,1510.09,1705.82,1932.72,2165.05,2359.05,2580.08,2771.07,3033.05,
+    3167.62,3409.31,3479.23,3707.19,3851.96,3897.3,4225.34,4205.58,4315.72,4419.21,4657.92,4658.72,4759.31,4806.68,4802.77,
+    5000.05,5121.6,5309.11,5333.83,5338.58,5643.52,5467.12,5694.31,5779.82,5594.7,5879.86,5981.84,5787.35,6262.51,6254.24,6416.64,
+    6962.87,6881.92,7197.05,7142.11,7293.65,7876.71,8372.81,7681.55,7740.36,7990.87,8104.59,8363.88,8592.66,8136.1,8629.33,8565.14,
+    8687.34,9020.28,9114.16,8924.67,9189.4,9277.85,9158.99,9574.41,10854.5,9460.01,9664.68,10045.7,10371.2,9946.08,10623.3,11275.5,
+    10485.8,11033.6,11213.6,11160.2,11517.3,11466.1,11184,11771.9,11520.6,12506,11235.2,12208.5,12694.5,11598.4,13119.1,11726.9,
+    12782.3,12282.6,13379.2,14005.3,12249.8,12855.6,12727.9,12390.6,13738.5,14171.4,13698.8,14075.3,14030.4,15346.9,13350.7,14807,
+    14633.6,17460.4,15319,15551.3,15958,14883.8,14163.4,15687.7,14723.8,15681.3,16460.4,15074.8,15287.5,15808.1,16863.4,15432.6,
+    16162.6,16028.7,17023.9,16573.2,14573.7,15343.5,16263,14356.3,14277.8,15545.9,16271.4,14849.5,14983.5,15728.8,15986.8,14954.6,
+    16380.3,14752.6,14499.7,16345.6,18455.6,13926.8,17307.8,15290.8,15605.9,16007.6,17090.7,18384.3,16610.8,16896,17407.5,19442.5,
+    19325.7,20769.7,18066.3,17648.5,18863.4,22099.9,20030.3,23828.9,19256,20513.2,26932.9,20529.7,18444.9,20507.2,20803.8,23749.3,
+    20872.5,21161.2,20857.3,21194.2,22768.2,20472.9,18433.5,21932.4,19893.6,21459.4,19480.1,19474.4,22644.7,25062.3,20185.8,
+    21164,20515.7,21679.3,23751.5,21387,24228.8,22827.1,22586.3,21646.6,19780.9,18207.4,17148.8,17317.4,14297.8,15752.4,15363.6,
+    14105.6,12582.5,12050,11068.4,10582.3,10052.6,9658.73,9156.67,9611.99,8740.63,9141.28,8545.84,8675.79,8096.21,8927.55,8966.51,
+    9515.41,8602.26,9440.08,10283.8,10265.4,10888.3,10528.8,12258.1,12131.1,14388.4,15769.1,16420.3,17624.4,15974.7,19390.5,21176.3,
+    19823.3,24277.3,20107.8,21017.3,26572.9,24786.3,23206.9,25619.9,29196.8,22952.4,27438.1,22454,30586.4,20477.8,22649.7,22041.4,
+    20035.7,17730.3,17692.6,20030.4,19537,16425.3,16144.3,19343.1,15152.6,14117.4,14447.6,15711.6,13035.8,14160.7,15208.4,14528.4,
+    13168.9,13102.1,20340.7,14727,14351,13941.1,13676.7,14920.8,14700,13243,12718.4,15343.7,13408.6,13693.9,12562.9,13435.8,
+    13291.9,12706.8,13482.3,12490.9,12314.1,11564,10328.3,10482,9638.82,9286.56,8971.19,8252.47,7627.67,7387.04,6738.8,6368.22,6173.61,
+    5617.03,5641.01,5206.5,4730.11,4560.32,4190.11,3948.63,3640.44,3263.39,3022.28,2781.11,2542.86,2304.26,2125.74,1978.46,
+    1820.81,1705.02,1617.41,1552.42,1469.53,1420.46,1389.11,1373.85,1360.76,1356.43,1357.77,1376.89,1393.14,1407.4,1442.59,1487.05,
+    1538.95,1622.01,1698.69,1792.43,1935.75,2089.58,2274.06,2455.86,2639.89,2934.61,3027.92,3422.37,3714.02,4134.33,4542.13,5160.33,
+    5363.87,5977.23,6442.42,7013.28,7784.87,8675.49,8942.09,9518.33,9760.12,10260.8,9922.78,10979.6,10000.5,10391.3,9134.34,
+    9521.78,9595.54,9179.65,8279.66,8223.8,8020.19,6951.69,6875.43,6592.61,6159.45,6023.03,6023.03
+  };
+  for (int i=0; i<myAcrSize; i++) {
+    myAcrAbsEnergy[i] = h_Planck*c_light / (nm*myAcrAbsEnergy[i]);
+    myAcrAbs[i] *= mm;
+  }
+
+  G4double RINDEX_value1[53] =  { 60 , 200 , 300 , 310 , 320 , 330 , 340 ,       350 , 360 , 370 , 380 , 390 , 400 , 410 , 420 , 430 , 440 , 450 , 460 , 470 , 480 , 490 , 500 , 510 , 520 , 530 , 540 ,       550 , 560 , 570 , 580 , 590 , 600 , 610 , 620 , 630 , 640 , 650 , 660 , 670 , 680 , 690 , 700 , 710 , 720 , 730 , 740 ,       750 , 760 , 770 , 780 , 790 , 800  } ;
+  G4double RINDEX_value2[53] = { 1.65, 1.65, 1.527 , 1.524 , 1.521 , 1.519 , 1.516 , 1.514 , 1.512 , 1.510 , 1.509 , 1.507 , 1.506 , 1.505 , 1.503 , 1.502 , 1.501 , 1.500 , 1.499 , 1.499 , 1.498 , 1.497 , 1.496 , 1.496 , 1.495 , 1.494 , 1.494 , 1.493 , 1.493 , 1.492 , 1.492 , 1.491 , 1.491 , 1.490 , 1.490 , 1.490 , 1.489 , 1.489 , 1.488 , 1.488 , 1.488 , 1.488 , 1.487 , 1.487 , 1.487 , 1.486 , 1.486 , 1.486 , 1.486 , 1.485 , 1.485 , 1.485 , 1.485 } ;
+
+  G4double myacr_RINDEX_ene[53] ;
+  for (int i=52;i>=0;--i) {
+    myacr_RINDEX_ene[i] =  h_Planck*c_light/ ( RINDEX_value1[i] *nm )  ;
+  }
+
+  myAcrylic->AddProperty("RINDEX",  myacr_RINDEX_ene  , RINDEX_value2,   53);
+  myAcrylic->AddProperty("ABSLENGTH", myAcrAbsEnergy, myAcrAbs , myAcrSize);
+  PMMA_mat->SetMaterialPropertiesTable(myAcrylic);
+
 
 	// Teflon bases   ------------------------------------
 	G4Material* teflon_mat = nist->FindOrBuildMaterial("G4_TEFLON");
@@ -280,7 +355,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 		  PEN_WLS_ABSORPTION_VAL[dim] = 1000*m;
                   PEN_ABSORPTION_VAL[dim]  = 1.*cm; // Efremenko et al.
                   PEN_RINDEX[dim]          = 1.75;
-                  PEN_RAYL[dim]            = 10*cm; // educated guess
+                  PEN_RAYL[dim]            = 1*cm; // educated guess
 		  PEN_RAYL_FOIL[dim]       = 150.*micrometer; // educated guess
           }
           dim++;
@@ -293,16 +368,16 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	myPEN->AddProperty("RAYLEIGH",    PEN_ENE2, PEN_RAYL,               dim);
 	myPEN->AddConstProperty("WLSMEANNUMBERPHOTONS", 0.091);
 	myPEN->AddConstProperty("WLSTIMECONSTANT",20.*ns);
-	myPEN->AddConstProperty("WLSEFFICIENCY",0.091); // https://arxiv.org/abs/2103.03232
+//	myPEN->AddConstProperty("WLSEFFICIENCY",0.091); // https://arxiv.org/abs/2103.03232
 	fPEN->SetMaterialPropertiesTable(myPEN);
 
 	myPENfoil->AddProperty("WLSABSLENGTH",PEN_ENE2, PEN_WLS_ABSORPTION_VAL, dim);
 	myPENfoil->AddProperty("ABSLENGTH",   PEN_ENE2, PEN_ABSORPTION_VAL,     dim);
 	myPENfoil->AddProperty("RINDEX",      PEN_ENE2, PEN_RINDEX,             dim);
 	myPENfoil->AddProperty("RAYLEIGH",    PEN_ENE2, PEN_RAYL_FOIL,          dim);
-	myPENfoil->AddConstProperty("WLSMEANNUMBERPHOTONS", 1.);
+	myPENfoil->AddConstProperty("WLSMEANNUMBERPHOTONS", 0.34);
 	myPENfoil->AddConstProperty("WLSTIMECONSTANT",20.*ns);
-	myPENfoil->AddConstProperty("WLSEFFICIENCY",0.34); // https://arxiv.org/abs/2103.03232
+//	myPENfoil->AddConstProperty("WLSEFFICIENCY",0.34); // https://arxiv.org/abs/2103.03232
 	fPENfoil->SetMaterialPropertiesTable(myPENfoil);
 
   // ----------- colors ------------
@@ -370,14 +445,20 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	// FATGEM
 	// volume
 	G4Tubs* fatgem = new G4Tubs("fatgem", 0.*cm, fatgem_radius, fatgem_thickness, 0. * deg, 360. * deg);
-	//G4LogicalVolume* fatgem_log = new G4LogicalVolume(fatgem, PMMA_mat, "fatgem", 0, 0, 0);
-	G4LogicalVolume* fatgem_log = new G4LogicalVolume(fatgem, fPEN, "fatgem", 0, 0, 0);
+	G4Tubs* fatgem_wls = new G4Tubs("fatgem_wls", 0.*cm, fatgem_radius, 25.*micrometer/2., 0. * deg, 360. * deg);
+	G4LogicalVolume* fatgem_log = new G4LogicalVolume(fatgem, PMMA_mat, "fatgem", 0, 0, 0);
+//	G4LogicalVolume* fatgem_log = new G4LogicalVolume(fatgem, fPEN, "fatgem", 0, 0, 0);
+	G4LogicalVolume* fatgemwls_log = new G4LogicalVolume(fatgem_wls, fPENfoil, "fatgem_wls", 0, 0, 0);
 	G4VPhysicalVolume* fatgem_phys = new G4PVPlacement(0, G4ThreeVector(), fatgem_log, "fatgem", expHall_log, false, 0, checkOverlaps);
+	//G4VPhysicalVolume* fatgemwls_phys = new G4PVPlacement(0, G4ThreeVector(0,0,fatgem_thickness+25.*micrometer/2.), fatgemwls_log, "fatgem_wls", expHall_log, false, 0, checkOverlaps);
 	fatgem_log -> SetVisAttributes(red);
 
 	G4Tubs* hole = new G4Tubs("hole", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
+	G4Tubs* hole_wls = new G4Tubs("hole_wls", 0, hole_radius, 25.*micrometer/2., 0. * deg, 360. * deg);
 	G4LogicalVolume* hole_log = new G4LogicalVolume(hole, matXe, "hole", 0, 0, 0);
-
+	G4LogicalVolume* holewls_log = new G4LogicalVolume(hole_wls, matXe, "hole_wls", 0, 0, 0);
+	hole_log->SetVisAttributes(white);
+	
 	G4double hole_x[31]={0,-hole_pitch,hole_pitch,-hole_pitch*2,hole_pitch*2,
 			     hole_pitch/2.,-hole_pitch/2.,hole_pitch*1.5,-hole_pitch*1.5,hole_pitch*2.5,-hole_pitch*2.5,
 			     hole_pitch/2.,-hole_pitch/2.,hole_pitch*1.5,-hole_pitch*1.5,hole_pitch*2.5,-hole_pitch*2.5,
@@ -393,9 +474,11 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 			       -3*hole_voff,-3*hole_voff,
 			      3*hole_voff,3*hole_voff};
 
-	G4VPhysicalVolume* hole_phys[31];
-	for(int i=0; i<31; i++)
+	G4VPhysicalVolume *hole_phys[31], *holewls_phys[31];
+	for(int i=0; i<31; i++) {
 	  hole_phys[i] = new G4PVPlacement(0, G4ThreeVector(hole_x[i], hole_y[i], 0), hole_log, "hole", fatgem_log, false, i, checkOverlaps);
+	  //holewls_phys[i] = new G4PVPlacement(0, G4ThreeVector(hole_x[i], hole_y[i], 0), holewls_log, "hole_wls", fatgemwls_log, false, i, checkOverlaps);
+	}
 	
 	// optical surface 
 	G4OpticalSurface* OS_fatgem_hole = new G4OpticalSurface("fatgem_hole_surface");
@@ -412,26 +495,32 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 
 	const G4int num = 11;
 	G4double ephoton_fatgem[num] = { 0.12*eV, 0.31*eV, 0.62*eV, 1.24*eV, 1.77*eV, 2.067*eV, 2.48*eV, 3.1*eV, 4.13*eV, 6.2*eV,  8.9*eV };
-	G4double reflectivity_fatgem[num] = { 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1. };
+	G4double reflectivity_fatgem[num] = { 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. };
+	G4double transmittance_fatgem[num] = { .9, .9, .9, .9, .9, .9, .9, .9, .9, .9, .9 };
 	G4MaterialPropertiesTable* R_fatgem = new G4MaterialPropertiesTable();
 	R_fatgem->AddProperty("REFLECTIVITY", ephoton_fatgem, reflectivity_fatgem, num);
+	R_fatgem->AddProperty("TRANSMITTANCE", ephoton_fatgem, transmittance_fatgem, num);
 	OS_fatgem_hole->SetMaterialPropertiesTable(R_fatgem);
 
 	G4OpticalSurface* OS_clevios = new G4OpticalSurface("clevios_surface");
 	new G4LogicalBorderSurface("clevios_surface", fatgem_phys, expHall_phys, OS_clevios);
 	new G4LogicalBorderSurface("clevios_surface", expHall_phys, fatgem_phys, OS_clevios);
+	//new G4LogicalBorderSurface("clevios_surface", fatgemwls_phys, expHall_phys, OS_clevios);
+	//new G4LogicalBorderSurface("clevios_surface", expHall_phys, fatgemwls_phys, OS_clevios);
 
 	OS_clevios->SetType(dielectric_dielectric);
-        OS_clevios->SetFinish(polished);
+        OS_clevios->SetFinish(ground);
         OS_clevios->SetModel(glisur);
-        OS_clevios->SetPolish(1.);
+        OS_clevios->SetPolish(0.9);
 
 	//const G4int num = 11;
         G4double ephoton_clevios[num] = { 0.12*eV, 0.31*eV, 0.62*eV, 1.24*eV, 1.77*eV, 2.067*eV, 2.48*eV, 3.1*eV, 4.13*eV, 6.2*eV,  8.9*eV };
 	// 1% loss in VIS, 20% loss in VUV
-        G4double reflectivity_clevios[num] = { 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.8, 0.8 };
+        G4double reflectivity_clevios[num] = { 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.2, 0.2 };
+	G4double transmittance_clevios[num] = { .9, .9, .9, .9, .9, .9, .9, .9, .9, .9, .9 };
 	G4MaterialPropertiesTable* R_clevios = new G4MaterialPropertiesTable();
 	R_clevios->AddProperty("REFLECTIVITY", ephoton_clevios, reflectivity_clevios, num);
+	R_clevios->AddProperty("TRANSMITTANCE", ephoton_clevios, transmittance_clevios, num);
 	OS_clevios->SetMaterialPropertiesTable(R_clevios);
 
 	// FATGEM base

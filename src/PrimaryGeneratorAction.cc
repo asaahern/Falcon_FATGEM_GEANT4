@@ -31,6 +31,7 @@
 
 #include "Randomize.hh"
 #include "G4Event.hh"
+#include "G4RunManager.hh"
 #include "G4ParticleGun.hh"
 #include "G4ParticleTable.hh"
 #include "G4ParticleDefinition.hh"
@@ -45,7 +46,7 @@ using namespace CLHEP;
 
 PrimaryGeneratorAction::PrimaryGeneratorAction()
  : G4VUserPrimaryGeneratorAction(), 
-   fParticleGun(0)
+   fParticleGun(0),fCounter(1)
 {
     // define particle type and energy
     G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
@@ -91,10 +92,13 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
         x0  = pitch/2;
         y0  = sqrt((pitch*pitch) - (pitch/2*pitch/2));  
     } 
-   
+ 
     G4double posX   = G4RandGauss::shoot(x0, sigma);
     G4double posY   = G4RandGauss::shoot(y0, sigma);  
     G4double posZ   = (G4UniformRand()-0.5)*fatgem_thickness;
+
+    if(fCounter>1000000) {posX=posY=0; posZ=17.3;} 
+
     fParticleGun->SetParticlePosition(G4ThreeVector(posX, posY, posZ));
 
     G4double wavelength = G4RandGauss::shoot(170.*nm, 6.*nm);//172 * nm;   // Xe scintillation
@@ -102,13 +106,23 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
     fParticleGun->SetParticleEnergy(energy);
 
     // define momentum direction: isotropic and random
-    G4double theta  = std::acos(1-2* G4UniformRand())*rad;
-    G4double phi    = G4UniformRand() * 360.0*deg;
-    G4double mx     = std::sin(theta) * std::cos(phi);
-    G4double my     = std::sin(theta) * std::sin(phi);
-    G4double mz     = std::cos(theta);
-    G4ThreeVector momentumDirection = G4ThreeVector(mx, my, mz);
+    G4double theta, phi;
+    G4ThreeVector momentumDirection;
+    if(fCounter>1000000){
+    	do {
+		theta  = std::acos(-G4UniformRand())*rad;
+	        phi    = G4UniformRand() * 360.0*deg;
+        	momentumDirection.setRThetaPhi(1.,theta,phi);
+	    } while (momentumDirection.angle(G4ThreeVector(0,0,-1))>atan(20./17.3));
+
+    } else {
+	theta  = std::acos(1.-2.*G4UniformRand())*rad;
+        phi    = G4UniformRand() * 360.0*deg;
+       	momentumDirection.setRThetaPhi(1.,theta,phi);
+    }
+
     fParticleGun->SetParticleMomentumDirection(momentumDirection);
+    fCounter++;
     //fParticleGun->SetParticleMomentumDirection(G4ThreeVector(0,0,-1)); // launch all photons directed towards base
 
     // define polarization direction: random but contained in the plane perpendicular to the momentum direction of each photon
