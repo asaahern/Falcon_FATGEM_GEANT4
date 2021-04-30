@@ -6,7 +6,6 @@
 #
 /control/verbose 2
 /run/verbose 2
-#optics_engine/setOpProcessVerbose 1
 #
 /run/initialize
 #
@@ -87,11 +86,12 @@
 /vis/verbose warnings
 /control/verbose 2
 #/tracking/verbose 1
+#/process/optical/boundary/verbose 2
+#/process/verbose 2
 #
 #/run/initialize
 /run/beamOn 2000000
-#/run/beamOn 1000
-exit
+#/run/beamOn 100
 
 #/tracking/verbose 0
 #/run/verbose 0

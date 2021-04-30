@@ -81,7 +81,8 @@ DetectorConstruction::DetectorConstruction()
 
 	// Drifts
 	drift_1    		= 15.*mm;
-	drift_2			= 20.5*mm;
+	//drift_2			= 20.5*mm;
+	drift_2			= 15*mm;
 
 	// Teflon base
 	base_radius    = 50.*mm;
@@ -196,14 +197,13 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	// PMT photocathode ----------------------------------
 	G4Material* PMT_phc_mat = nist->FindOrBuildMaterial("G4_STAINLESS-STEEL");
 
-
 	// Plexiglass (for FATGEM and source) ----------------
 	G4Material* PMMA_mat = nist->FindOrBuildMaterial("G4_PLEXIGLASS");
 
   G4MaterialPropertiesTable *myAcrylic = new G4MaterialPropertiesTable();
-  G4double myAcrEnergy[18],  myAcrRI[18];
 
   const int myAcrSize = 504;
+  G4double myAcrAbsEnergy2[myAcrSize];
   G4double myAcrAbsEnergy[myAcrSize] = {
     60,200,280,281,282,283,284,285,286,287,288,289,290,291,292,293,294,295,296,297,298,299,300,301,302,
     303,304,305,306,307,308,309,310,311,312,313,314,315,316,317,318,319,320,321,322,323,324,325,326,327,328,329,330,
@@ -224,8 +224,10 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
     726,727,728,729,730,731,732,733,734,735,736,737,738,739,740,741,742,743,744,745,746,747,748,749,750,751,752,753,
     754,755,756,757,758,759,760,761,762,763,764,765,766,767,768,769,770,771,772,773,774,775,776,777,778,779,780,800
   };
+
+  G4double myAcrAbs2[myAcrSize];
   G4double myAcrAbs[myAcrSize] = {
-    0,0,1.32284,1.29312,1.30753,1.30943,1.26653,1.32372,1.29873,1.3092,1.30371,1.30577,1.32406,1.31243,1.3171,1.28569,
+    100*nm,100*nm,1.32284,1.29312,1.30753,1.30943,1.26653,1.32372,1.29873,1.3092,1.30371,1.30577,1.32406,1.31243,1.3171,1.28569,
     1.30494,1.33508,1.30388,1.29962,1.29142,1.30584,1.28672,1.31488,1.30954,1.31865,1.29685,1.28557,1.3144,1.32283,1.31425,
     1.27107,1.302,1.29515,1.29604,1.31832,1.27713,1.33705,1.31362,1.34722,1.34076,1.33069,1.35506,1.35238,1.33769,1.33566,1.35435,
     1.32866,1.35414,1.34693,1.40201,1.3828,1.39343,1.31766,1.30547,1.34563,1.31455,1.34873,1.32728,1.281,1.35277,1.31982,1.30124,
@@ -258,21 +260,22 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
     5363.87,5977.23,6442.42,7013.28,7784.87,8675.49,8942.09,9518.33,9760.12,10260.8,9922.78,10979.6,10000.5,10391.3,9134.34,
     9521.78,9595.54,9179.65,8279.66,8223.8,8020.19,6951.69,6875.43,6592.61,6159.45,6023.03,6023.03
   };
-  for (int i=0; i<myAcrSize; i++) {
-    myAcrAbsEnergy[i] = h_Planck*c_light / (nm*myAcrAbsEnergy[i]);
-    myAcrAbs[i] *= mm;
+  for (int i=myAcrSize-1; i>=0; i--) {
+    myAcrAbsEnergy2[i] = h_Planck*c_light / (nm*myAcrAbsEnergy[myAcrSize-1-i]);
+    myAcrAbs2[i] = myAcrAbs[myAcrSize-1-i]*mm;
   }
 
   G4double RINDEX_value1[53] =  { 60 , 200 , 300 , 310 , 320 , 330 , 340 ,       350 , 360 , 370 , 380 , 390 , 400 , 410 , 420 , 430 , 440 , 450 , 460 , 470 , 480 , 490 , 500 , 510 , 520 , 530 , 540 ,       550 , 560 , 570 , 580 , 590 , 600 , 610 , 620 , 630 , 640 , 650 , 660 , 670 , 680 , 690 , 700 , 710 , 720 , 730 , 740 ,       750 , 760 , 770 , 780 , 790 , 800  } ;
   G4double RINDEX_value2[53] = { 1.65, 1.65, 1.527 , 1.524 , 1.521 , 1.519 , 1.516 , 1.514 , 1.512 , 1.510 , 1.509 , 1.507 , 1.506 , 1.505 , 1.503 , 1.502 , 1.501 , 1.500 , 1.499 , 1.499 , 1.498 , 1.497 , 1.496 , 1.496 , 1.495 , 1.494 , 1.494 , 1.493 , 1.493 , 1.492 , 1.492 , 1.491 , 1.491 , 1.490 , 1.490 , 1.490 , 1.489 , 1.489 , 1.488 , 1.488 , 1.488 , 1.488 , 1.487 , 1.487 , 1.487 , 1.486 , 1.486 , 1.486 , 1.486 , 1.485 , 1.485 , 1.485 , 1.485 } ;
 
-  G4double myacr_RINDEX_ene[53] ;
-  for (int i=52;i>=0;--i) {
-    myacr_RINDEX_ene[i] =  h_Planck*c_light/ ( RINDEX_value1[i] *nm )  ;
+  G4double myacr_RINDEX_ene[53], RINDEX_value[53] ;
+  for (int i=52;i>=0; i--) {
+    myacr_RINDEX_ene[i] =  h_Planck*c_light/ (RINDEX_value1[52-i]*nm);
+    RINDEX_value[i] = RINDEX_value2[52-i];
   }
 
-  myAcrylic->AddProperty("RINDEX",  myacr_RINDEX_ene  , RINDEX_value2,   53);
-  myAcrylic->AddProperty("ABSLENGTH", myAcrAbsEnergy, myAcrAbs , myAcrSize);
+  myAcrylic->AddProperty("RINDEX",  myacr_RINDEX_ene  , RINDEX_value,   53);
+  myAcrylic->AddProperty("ABSLENGTH", myAcrAbsEnergy2, myAcrAbs2 , myAcrSize);
   PMMA_mat->SetMaterialPropertiesTable(myAcrylic);
 
 
@@ -293,13 +296,13 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	G4Material* al_mat = nist->FindOrBuildMaterial("G4_Al");
 
 	//PEN poly(ethylene 2,6-naphthalate)
-	G4int ncomponents, z;
-	G4double a, density=1.36*g/cm3;
-	G4String name, symbol;
-	G4Element* H  = new G4Element(name="Hydrogen",  symbol="H" , z=1,  a=1.00794*g/mole );  
-	G4Element* C  = new G4Element(name="Carbon",    symbol="C",  z=6,  a=12.0107*g/mole );
-	G4Element* O  = new G4Element(name="Oxygen",    symbol="O",  z=8,  a=15.9994*g/mole );
-	G4Material* fPEN = new G4Material (name="PEN",density,ncomponents=3,kStateSolid);
+        G4int ncomponents, z;
+        G4double a, density=1.36*g/cm3;
+        G4String name, symbol;
+        G4Element* H  = new G4Element(name="Hydrogen",  symbol="H" , z=1,  a=1.00794*g/mole );  
+        G4Element* C  = new G4Element(name="Carbon",    symbol="C",  z=6,  a=12.0107*g/mole );
+        G4Element* O  = new G4Element(name="Oxygen",    symbol="O",  z=8,  a=15.9994*g/mole );
+	G4Material* fPEN = new G4Material (name="PENQ51",density,ncomponents=3,kStateSolid);
 	fPEN->AddElement(C,14);
 	fPEN->AddElement(H,10);
 	fPEN->AddElement(O,4);
@@ -344,7 +347,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	  // PEN_WLS_ABSORPTION_VAL[dim] = myvalue;
           if (myene2 > 1240./250.)  { // transition point at 250 nm
                 // in VUV normal absorption and scattering disabled (WLS absorption will dominate)
-		  PEN_WLS_ABSORPTION_VAL[dim] = 100*nm;
+		  PEN_WLS_ABSORPTION_VAL[dim] = 1.*nm;
                   PEN_ABSORPTION_VAL[dim]  = 1000.*m;
                   PEN_RINDEX[dim]          = 1.75;
                   PEN_RAYL[dim]            = 1000.*m;
@@ -353,6 +356,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
           else {
                 // in visible absorption and scattering meaningful
 		  PEN_WLS_ABSORPTION_VAL[dim] = 1000*m;
+//                  PEN_ABSORPTION_VAL[dim]  = 5.*cm; // Efremenko et al.
                   PEN_ABSORPTION_VAL[dim]  = 1.*cm; // Efremenko et al.
                   PEN_RINDEX[dim]          = 1.75;
                   PEN_RAYL[dim]            = 1*cm; // educated guess
@@ -363,10 +367,16 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	fpen_absorption.close();
 
 	myPEN->AddProperty("WLSABSLENGTH",PEN_ENE2, PEN_WLS_ABSORPTION_VAL, dim);
-	myPEN->AddProperty("ABSLENGTH",   PEN_ENE2, PEN_ABSORPTION_VAL,     dim);
-	myPEN->AddProperty("RINDEX",      PEN_ENE2, PEN_RINDEX,             dim);
+//	myPEN->AddProperty("ABSLENGTH",   PEN_ENE2, PEN_ABSORPTION_VAL,     dim);
+//	myPEN->AddProperty("RINDEX",      PEN_ENE2, PEN_RINDEX,             dim);
+
+  myPEN->AddProperty("RINDEX",  myacr_RINDEX_ene  , RINDEX_value,   53);
+  myPEN->AddProperty("ABSLENGTH", myAcrAbsEnergy2, myAcrAbs2 , myAcrSize);
+
 	myPEN->AddProperty("RAYLEIGH",    PEN_ENE2, PEN_RAYL,               dim);
-	myPEN->AddConstProperty("WLSMEANNUMBERPHOTONS", 0.091);
+//	myPEN->AddConstProperty("WLSMEANNUMBERPHOTONS", 0.091);
+	myPEN->AddConstProperty("WLSMEANNUMBERPHOTONS", 1.);
+//	myPEN->AddConstProperty("WLSMEANNUMBERPHOTONS", 0.5);
 	myPEN->AddConstProperty("WLSTIMECONSTANT",20.*ns);
 //	myPEN->AddConstProperty("WLSEFFICIENCY",0.091); // https://arxiv.org/abs/2103.03232
 	fPEN->SetMaterialPropertiesTable(myPEN);
@@ -375,7 +385,8 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	myPENfoil->AddProperty("ABSLENGTH",   PEN_ENE2, PEN_ABSORPTION_VAL,     dim);
 	myPENfoil->AddProperty("RINDEX",      PEN_ENE2, PEN_RINDEX,             dim);
 	myPENfoil->AddProperty("RAYLEIGH",    PEN_ENE2, PEN_RAYL_FOIL,          dim);
-	myPENfoil->AddConstProperty("WLSMEANNUMBERPHOTONS", 0.34);
+//`	myPENfoil->AddConstProperty("WLSMEANNUMBERPHOTONS", 0.34);
+	myPENfoil->AddConstProperty("WLSMEANNUMBERPHOTONS", 1.);
 	myPENfoil->AddConstProperty("WLSTIMECONSTANT",20.*ns);
 //	myPENfoil->AddConstProperty("WLSEFFICIENCY",0.34); // https://arxiv.org/abs/2103.03232
 	fPENfoil->SetMaterialPropertiesTable(myPENfoil);
@@ -446,11 +457,11 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	// volume
 	G4Tubs* fatgem = new G4Tubs("fatgem", 0.*cm, fatgem_radius, fatgem_thickness, 0. * deg, 360. * deg);
 	G4Tubs* fatgem_wls = new G4Tubs("fatgem_wls", 0.*cm, fatgem_radius, 25.*micrometer/2., 0. * deg, 360. * deg);
-	G4LogicalVolume* fatgem_log = new G4LogicalVolume(fatgem, PMMA_mat, "fatgem", 0, 0, 0);
-//	G4LogicalVolume* fatgem_log = new G4LogicalVolume(fatgem, fPEN, "fatgem", 0, 0, 0);
+	//G4LogicalVolume* fatgem_log = new G4LogicalVolume(fatgem, PMMA_mat, "fatgem", 0, 0, 0);
+	G4LogicalVolume* fatgem_log = new G4LogicalVolume(fatgem, fPEN, "fatgem", 0, 0, 0);
 	G4LogicalVolume* fatgemwls_log = new G4LogicalVolume(fatgem_wls, fPENfoil, "fatgem_wls", 0, 0, 0);
 	G4VPhysicalVolume* fatgem_phys = new G4PVPlacement(0, G4ThreeVector(), fatgem_log, "fatgem", expHall_log, false, 0, checkOverlaps);
-	//G4VPhysicalVolume* fatgemwls_phys = new G4PVPlacement(0, G4ThreeVector(0,0,fatgem_thickness+25.*micrometer/2.), fatgemwls_log, "fatgem_wls", expHall_log, false, 0, checkOverlaps);
+	G4VPhysicalVolume* fatgemwls_phys = new G4PVPlacement(0, G4ThreeVector(0,0,fatgem_thickness+25.*micrometer/2.), fatgemwls_log, "fatgem_wls", expHall_log, false, 0, checkOverlaps);
 	fatgem_log -> SetVisAttributes(red);
 
 	G4Tubs* hole = new G4Tubs("hole", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
@@ -476,8 +487,8 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 
 	G4VPhysicalVolume *hole_phys[31], *holewls_phys[31];
 	for(int i=0; i<31; i++) {
-	  hole_phys[i] = new G4PVPlacement(0, G4ThreeVector(hole_x[i], hole_y[i], 0), hole_log, "hole", fatgem_log, false, i, checkOverlaps);
-	  //holewls_phys[i] = new G4PVPlacement(0, G4ThreeVector(hole_x[i], hole_y[i], 0), holewls_log, "hole_wls", fatgemwls_log, false, i, checkOverlaps);
+	  hole_phys[i] = new G4PVPlacement(0, G4ThreeVector(hole_x[i], hole_y[i], 0), hole_log, "hole", fatgem_log, true, i, checkOverlaps);
+	  holewls_phys[i] = new G4PVPlacement(0, G4ThreeVector(hole_x[i], hole_y[i], 0), holewls_log, "hole_wls", fatgemwls_log, true, i, checkOverlaps);
 	}
 	
 	// optical surface 
@@ -495,18 +506,18 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 
 	const G4int num = 11;
 	G4double ephoton_fatgem[num] = { 0.12*eV, 0.31*eV, 0.62*eV, 1.24*eV, 1.77*eV, 2.067*eV, 2.48*eV, 3.1*eV, 4.13*eV, 6.2*eV,  8.9*eV };
-	G4double reflectivity_fatgem[num] = { 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. };
+	G4double reflectivity_fatgem[num] = { 0.9999, 0.9999, 0.9999, 0.9999, 0.9999, 0.9999, 0.9999, 0.9999, 0.9999, 0.9999, 0.9999 };
 	G4double transmittance_fatgem[num] = { .9, .9, .9, .9, .9, .9, .9, .9, .9, .9, .9 };
 	G4MaterialPropertiesTable* R_fatgem = new G4MaterialPropertiesTable();
 	R_fatgem->AddProperty("REFLECTIVITY", ephoton_fatgem, reflectivity_fatgem, num);
-	R_fatgem->AddProperty("TRANSMITTANCE", ephoton_fatgem, transmittance_fatgem, num);
+//	R_fatgem->AddProperty("TRANSMITTANCE", ephoton_fatgem, transmittance_fatgem, num);
 	OS_fatgem_hole->SetMaterialPropertiesTable(R_fatgem);
 
 	G4OpticalSurface* OS_clevios = new G4OpticalSurface("clevios_surface");
-	new G4LogicalBorderSurface("clevios_surface", fatgem_phys, expHall_phys, OS_clevios);
-	new G4LogicalBorderSurface("clevios_surface", expHall_phys, fatgem_phys, OS_clevios);
-	//new G4LogicalBorderSurface("clevios_surface", fatgemwls_phys, expHall_phys, OS_clevios);
-	//new G4LogicalBorderSurface("clevios_surface", expHall_phys, fatgemwls_phys, OS_clevios);
+	//new G4LogicalBorderSurface("clevios_surface", fatgem_phys, expHall_phys, OS_clevios);
+	//new G4LogicalBorderSurface("clevios_surface", expHall_phys, fatgem_phys, OS_clevios);
+	new G4LogicalBorderSurface("clevios_surface", fatgemwls_phys, expHall_phys, OS_clevios);
+	new G4LogicalBorderSurface("clevios_surface", expHall_phys, fatgemwls_phys, OS_clevios);
 
 	OS_clevios->SetType(dielectric_dielectric);
         OS_clevios->SetFinish(ground);
@@ -516,11 +527,12 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	//const G4int num = 11;
         G4double ephoton_clevios[num] = { 0.12*eV, 0.31*eV, 0.62*eV, 1.24*eV, 1.77*eV, 2.067*eV, 2.48*eV, 3.1*eV, 4.13*eV, 6.2*eV,  8.9*eV };
 	// 1% loss in VIS, 20% loss in VUV
-        G4double reflectivity_clevios[num] = { 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.2, 0.2 };
+        //G4double reflectivity_clevios[num] = { 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.8, 0.8 };
+        G4double reflectivity_clevios[num] = { 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8 };
 	G4double transmittance_clevios[num] = { .9, .9, .9, .9, .9, .9, .9, .9, .9, .9, .9 };
 	G4MaterialPropertiesTable* R_clevios = new G4MaterialPropertiesTable();
 	R_clevios->AddProperty("REFLECTIVITY", ephoton_clevios, reflectivity_clevios, num);
-	R_clevios->AddProperty("TRANSMITTANCE", ephoton_clevios, transmittance_clevios, num);
+//	R_clevios->AddProperty("TRANSMITTANCE", ephoton_clevios, transmittance_clevios, num);
 	OS_clevios->SetMaterialPropertiesTable(R_clevios);
 
 	// FATGEM base
