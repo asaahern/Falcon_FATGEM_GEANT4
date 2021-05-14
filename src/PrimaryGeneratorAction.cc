@@ -92,9 +92,19 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
         x0  = pitch/2;
         y0  = sqrt((pitch*pitch) - (pitch/2*pitch/2));  
     } 
- 
-    G4double posX   = G4RandGauss::shoot(x0, sigma);
-    G4double posY   = G4RandGauss::shoot(y0, sigma);  
+
+    G4double posX=2, posY=2; 
+
+    //while (posX*posX + posY*posY > 1.) {
+    	posX   = G4RandGauss::shoot(x0, sigma);
+    	posY   = G4RandGauss::shoot(y0, sigma);
+    //}
+
+    //while (posX*posX + posY*posY > 1.) {
+    //	posX   = G4UniformRand()*2.-1.;
+    //	posY   = G4UniformRand()*2.-1.;
+    //}
+
     G4double posZ   = (G4UniformRand()-0.5)*fatgem_thickness;
 
     if(fCounter>1000000) {posX=posY=0; posZ=17.3;} 

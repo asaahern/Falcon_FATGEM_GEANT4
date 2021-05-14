@@ -84,6 +84,8 @@ void SteppingAction::UserSteppingAction(const G4Step* step)
 			myfile << "TPC ";
 		else
 			myfile << "PMT ";
+
+		myfile << endPoint->GetPosition().x() << " " << endPoint->GetPosition().y() << " ";
 	
 		if (h_Planck*c_light/step->GetTrack()->GetKineticEnergy()/nm>250)
 			myfile << "VIS" << G4endl;
