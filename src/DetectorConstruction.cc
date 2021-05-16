@@ -358,7 +358,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
           else {
                 // in visible absorption and scattering meaningful
 		  PEN_WLS_ABSORPTION_VAL[dim] = 1000*m;
-                  if(configuration==1 || configuration==9 || configuration==10) PEN_ABSORPTION_VAL[dim]  = 5.*cm; // Efremenko et al.
+                  if(configuration==1 || configuration==9 || configuration==10 || configuration==14) PEN_ABSORPTION_VAL[dim]  = 5.*cm; // Efremenko et al.
                   else PEN_ABSORPTION_VAL[dim]  = 1.*cm; // Efremenko et al.
                   PEN_RINDEX[dim]          = 1.75;
                   PEN_RAYL[dim]            = 10*cm; // educated guess
@@ -380,7 +380,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	}
 
 	G4double holeWLSE=1.;
-	if(configuration==5 || configuration==8 || configuration==9 || configuration==10 || configuration==12) holeWLSE=0.091;
+	if(configuration==5 || configuration==8 || configuration==9 || configuration==10 || configuration==12 || configuration==14) holeWLSE=0.091;
 	else if (configuration==4) holeWLSE=0.5;
 	else if (configuration==2 || configuration==13) holeWLSE=0;
 
@@ -532,10 +532,11 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	OS_fatgem_hole->SetMaterialPropertiesTable(R_fatgem);
 
 	G4OpticalSurface* OS_clevios = new G4OpticalSurface("clevios_surface");
+	G4OpticalSurface* OS_clevios_outgoing = new G4OpticalSurface("clevios_surface_outgoing");
 	G4OpticalSurface* OS_esr = new G4OpticalSurface("esr_surface");
 
 	if (configuration==5 || configuration==6 || configuration==7 || configuration==10 || configuration==11 || configuration==13)	{
-		new G4LogicalBorderSurface("clevios_surface", fatgemwls_phys, expHall_phys, OS_clevios);
+		new G4LogicalBorderSurface("clevios_surface_outgoing", fatgemwls_phys, expHall_phys, OS_clevios_outgoing);
 		new G4LogicalBorderSurface("clevios_surface", expHall_phys, fatgemwls_phys, OS_clevios);
 	}
 	if (configuration==11) {
@@ -543,13 +544,18 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 		new G4LogicalBorderSurface("ESR_surface", fatgemwls_phys, fatgem_phys, OS_esr);
 	}
 
-	new G4LogicalBorderSurface("clevios_surface", fatgem_phys, expHall_phys, OS_clevios);
+	new G4LogicalBorderSurface("clevios_surface_outgoing", fatgem_phys, expHall_phys, OS_clevios_outgoing);
 	new G4LogicalBorderSurface("clevios_surface", expHall_phys, fatgem_phys, OS_clevios);
 
 	OS_clevios->SetType(dielectric_dielectric);
         OS_clevios->SetFinish(ground);
         OS_clevios->SetModel(glisur);
         OS_clevios->SetPolish(0.95);
+
+	OS_clevios_outgoing->SetType(dielectric_dielectric);
+        OS_clevios_outgoing->SetFinish(ground);
+        OS_clevios_outgoing->SetModel(glisur);
+        OS_clevios_outgoing->SetPolish(0.95);
 
 	OS_esr->SetType(dielectric_metal);
         OS_esr->SetFinish(polished);
@@ -562,20 +568,33 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 
         G4double reflectivity_clevios[num] = { 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.75, 0.75 };
         //G4double reflectivity_clevios[num] = { 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99999, 0.99999 };
-        G4double reflectivity_cu[num] = { 0.71, 0.71, 0.71, 0.71, 0.71, 0.71, 0.71, 0.71, 0.71, 0.71, 0.71 };
-        G4double reflectivity_esr[num] = { 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98 };
-
 	//G4double transmittance_clevios[num] = { .9, .9, .9, .9, .9, .9, .9, .9, .9, .9, .9 };
 
+        G4double reflectivity_esr[num] = { 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98 };
+
+	// assuming actual SS_R of 55% for visible and 5% for VUV and 29% coverage with the mesh
+	// [inspired by Figure 1 of Karlsson and Ribbing, J. Appl. Phys. Vol 53. No. 9 Sept. 1982]
+	// for VIS 0.29*(1.0-0.55) is then lost -> in case of dielectric_dielectric implementation must be then used as (1-R)
+        G4double reflectivity_cu[num] =  { 0.87, 0.87, 0.87, 0.87, 0.87, 0.87, 0.87, 0.87, 0.87, 0.28, 0.28 };
+
+	// this is for photons entering the plate. 0.71% hits the plastic, and 4% of them is reflected: 0.96*0.71=0.68
+	G4double transmittance_cu[num] = { 0.68, 0.68, 0.68, 0.68, 0.68, 0.68, 0.68, 0.68, 0.68, 0.68, 0.68 };
+
 	G4MaterialPropertiesTable* R_clevios = new G4MaterialPropertiesTable();
-	if (configuration==7 || configuration==12)
-		R_clevios->AddProperty("REFLECTIVITY", ephoton_clevios, reflectivity_cu, num);
-	else
+	G4MaterialPropertiesTable* R_clevios_outgoing = new G4MaterialPropertiesTable();
+
+	if (configuration==7 || configuration==12 || configuration==14) {
+		R_clevios_outgoing->AddProperty("REFLECTIVITY", ephoton_clevios, reflectivity_cu, num);
+		R_clevios->AddProperty("REFLECTIVITY", ephoton_clevios, transmittance_cu, num);
+	} else {
 		R_clevios->AddProperty("REFLECTIVITY", ephoton_clevios, reflectivity_clevios, num);
+		R_clevios_outgoing->AddProperty("REFLECTIVITY", ephoton_clevios, reflectivity_clevios, num);
+	}
 
 	// line below commented out to rely on rindex
 	// R_clevios->AddProperty("TRANSMITTANCE", ephoton_clevios, transmittance_clevios, num);
 	OS_clevios->SetMaterialPropertiesTable(R_clevios);
+	OS_clevios_outgoing->SetMaterialPropertiesTable(R_clevios_outgoing);
 
 	G4MaterialPropertiesTable* R_esr = new G4MaterialPropertiesTable();
 	R_esr->AddProperty("REFLECTIVITY", ephoton_clevios, reflectivity_esr, num);
