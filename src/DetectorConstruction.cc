@@ -83,7 +83,7 @@ DetectorConstruction::DetectorConstruction()
 	drift_1    		= 15.*mm;
 	//drift_2			= 20.5*mm;
 	drift_2			= 3.*mm;
-//	drift_2			= 15.*mm;
+//    drift_2                   = 15.*mm;
 
 	// Teflon base
 	base_radius    = 50.*mm;
@@ -104,7 +104,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	// Option to switch on/off checking of volumes overlaps
 	G4bool checkOverlaps = true;
 	G4NistManager* nist = G4NistManager::Instance();
-	G4int configuration = 6;
+	G4int configuration = 15;
 	
 	// ------------ Generate & Add Material Properties Table ------------
 
@@ -386,7 +386,9 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 
 	myPEN->AddConstProperty("WLSMEANNUMBERPHOTONS", holeWLSE);
 	myPEN->AddConstProperty("WLSTIMECONSTANT",20.*ns);
-	fPEN->SetMaterialPropertiesTable(myPEN);
+	
+	if (configuration==15) fPEN->SetMaterialPropertiesTable(Xe_MPT1);
+	else fPEN->SetMaterialPropertiesTable(myPEN);
 
 	myPENfoil->AddProperty("WLSABSLENGTH",PEN_ENE2, PEN_WLS_ABSORPTION_VAL, dim);
 	myPENfoil->AddProperty("ABSLENGTH",   PEN_ENE2, PEN_ABSORPTION_VAL,     dim);
@@ -400,7 +402,9 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	
 	myPENfoil->AddConstProperty("WLSMEANNUMBERPHOTONS", foilWLSE);
 	myPENfoil->AddConstProperty("WLSTIMECONSTANT",20.*ns);
-	fPENfoil->SetMaterialPropertiesTable(myPENfoil);
+	
+	if (configuration==15) fPENfoil->SetMaterialPropertiesTable(Xe_MPT1);
+	else fPENfoil->SetMaterialPropertiesTable(myPENfoil);
 
   // ----------- colors ------------
 
@@ -417,8 +421,8 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	white -> SetVisibility(true);
 	white -> SetForceSolid(true);
 	G4VisAttributes * yellow = new G4VisAttributes(G4Colour(1. ,1. ,0.));
-	yellow -> SetVisibility(true);
-	yellow -> SetForceSolid(true);
+	yellow -> SetVisibility(false);
+	yellow -> SetForceWireframe(false);
 	G4VisAttributes * gray = new G4VisAttributes(G4Colour(0.7 ,0.7 ,0.7));
 	gray -> SetVisibility(true);
 	gray -> SetForceSolid(true);
@@ -435,13 +439,13 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	// window
 	G4Tubs* PMT_win = new G4Tubs("PMT_win", 0.*cm, PMT_radius, PMT_thickness, 0.*deg, 360.*deg);
 	G4LogicalVolume* pmtWindow_log = new G4LogicalVolume(PMT_win, PMT_window_mat, "PMT_win", 0, 0, 0);
-//	G4VPhysicalVolume* pmtWindow_phys = new G4PVPlacement(0, G4ThreeVector(0, 0, -drift_2 -fatgem_thickness - PMT_thickness), pmtWindow_log, "PMT_win", expHall_log, false, 0, checkOverlaps);
+	//G4VPhysicalVolume* pmtWindow_phys = new G4PVPlacement(0, G4ThreeVector(0, 0, -drift_2 -fatgem_thickness - PMT_thickness), pmtWindow_log, "PMT_win", expHall_log, false, 0, checkOverlaps);
 	pmtWindow_log -> SetVisAttributes(blue);
 	
 	// photocathode
 	G4Tubs* PMT_phc = new G4Tubs("PMT_phCa", 0.*cm, PMT_radius, phc_thickness, 0.*deg, 360.*deg);
 	G4LogicalVolume* pmtPhc_log = new G4LogicalVolume(PMT_phc, PMT_phc_mat, "PMT_phCa", 0, 0, 0);
-//	G4VPhysicalVolume* pmtPhc_phys = new G4PVPlacement(0, G4ThreeVector(0, 0, -drift_2 -fatgem_thickness - 2*PMT_thickness - phc_thickness), pmtPhc_log, "PMT_phCa", expHall_log, false, 0, checkOverlaps);
+	//G4VPhysicalVolume* pmtPhc_phys = new G4PVPlacement(0, G4ThreeVector(0, 0, -drift_2 -fatgem_thickness - 2*PMT_thickness - phc_thickness), pmtPhc_log, "PMT_phCa", expHall_log, false, 0, checkOverlaps);
 	pmtPhc_log -> SetVisAttributes(black);
 
 
@@ -475,6 +479,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	G4VPhysicalVolume* fatgemwls_phys=NULL;
 	if(configuration==5 || configuration==6 || configuration==7 || configuration==10 || configuration==11 || configuration==13) 
 		fatgemwls_phys = new G4PVPlacement(0, G4ThreeVector(0,0,fatgem_thickness-25.*micrometer/2.), fatgemwls_log, "fatgem_wls", fatgem_log, false, 0, checkOverlaps);
+		//fatgemwls_phys = new G4PVPlacement(0, G4ThreeVector(0,0,-1.*(fatgem_thickness-25.*micrometer/2.)), fatgemwls_log, "fatgem_wls", fatgem_log, false, 0, checkOverlaps);
 	fatgem_log -> SetVisAttributes(red);
 
 	G4Tubs* hole = new G4Tubs("hole", 0, hole_radius, fatgem_thickness, 0. * deg, 360. * deg);
@@ -535,7 +540,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	G4OpticalSurface* OS_clevios_outgoing = new G4OpticalSurface("clevios_surface_outgoing");
 	G4OpticalSurface* OS_esr = new G4OpticalSurface("esr_surface");
 
-	if (configuration==5 || configuration==6 || configuration==7 || configuration==10 || configuration==11 || configuration==13)	{
+	if (configuration==5 || configuration==6 || configuration==7 || configuration==10 || configuration==11 || configuration==13 || configuration==15) {
 		new G4LogicalBorderSurface("clevios_surface_outgoing", fatgemwls_phys, expHall_phys, OS_clevios_outgoing);
 		new G4LogicalBorderSurface("clevios_surface", expHall_phys, fatgemwls_phys, OS_clevios);
 	}
@@ -567,9 +572,6 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	// 1% loss in VIS, 20% loss in VUV
 
         G4double reflectivity_clevios[num] = { 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.75, 0.75 };
-        //G4double reflectivity_clevios[num] = { 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99999, 0.99999 };
-	//G4double transmittance_clevios[num] = { .9, .9, .9, .9, .9, .9, .9, .9, .9, .9, .9 };
-
         G4double reflectivity_esr[num] = { 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98 };
 
 	// assuming actual SS_R of 55% for visible and 5% for VUV and 29% coverage with the mesh
@@ -580,12 +582,21 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	// this is for photons entering the plate. 0.71% hits the plastic, and 4% of them is reflected: 0.96*0.71=0.68
 	G4double transmittance_cu[num] = { 0.68, 0.68, 0.68, 0.68, 0.68, 0.68, 0.68, 0.68, 0.68, 0.68, 0.68 };
 
+	// 95% mesh from DS-50. So accounting for mesh reflectivity losses are (1-0.95)*0.55 = 0.0225  
+	G4double reflectivity_tpc_mesh[num] =  { 0.9775, 0.9775, 0.9775, 0.9775, 0.9775, 0.9775, 0.9775, 0.9775, 0.9775, 0.9525, 0.9525 };
+	// 98% transparent ITO from DS-50. We just kill 2%
+	G4double reflectivity_pmt_mesh[num] =  { 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98, 0.98 };
+
 	G4MaterialPropertiesTable* R_clevios = new G4MaterialPropertiesTable();
 	G4MaterialPropertiesTable* R_clevios_outgoing = new G4MaterialPropertiesTable();
 
 	if (configuration==7 || configuration==12 || configuration==14) {
 		R_clevios_outgoing->AddProperty("REFLECTIVITY", ephoton_clevios, reflectivity_cu, num);
 		R_clevios->AddProperty("REFLECTIVITY", ephoton_clevios, transmittance_cu, num);
+//		R_clevios->AddProperty("REFLECTIVITY", ephoton_clevios, reflectivity_cu, num);
+	} else if (configuration==15) {
+	        R_clevios_outgoing->AddProperty("REFLECTIVITY", ephoton_clevios, reflectivity_pmt_mesh, num);
+	        R_clevios->AddProperty("REFLECTIVITY", ephoton_clevios, reflectivity_tpc_mesh, num);	  
 	} else {
 		R_clevios->AddProperty("REFLECTIVITY", ephoton_clevios, reflectivity_clevios, num);
 		R_clevios_outgoing->AddProperty("REFLECTIVITY", ephoton_clevios, reflectivity_clevios, num);
@@ -650,7 +661,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 
 
 	// ------------- Surfaces --------------
-/*
+	/*
 	// PMT Quartz Window
 	G4OpticalSurface* opPMT_window = new G4OpticalSurface("PMT_Surface");
 	opPMT_window->SetType(dielectric_LUT);
@@ -681,7 +692,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	opPhCa->SetModel(glisur);
 
 	G4LogicalSkinSurface* PhCa_Surface = new G4LogicalSkinSurface("PhCa_SkinSurface", pmtPhc_log, opPhCa);
-*/	
+	*/
 	//always return the physical World
 	return expHall_phys;
 }
